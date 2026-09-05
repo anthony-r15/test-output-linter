@@ -26,6 +26,15 @@ go test -v ./... > run.log
 testlint run.log
 ```
 
+`go test -json` output works the same way:
+
+```sh
+go test -json ./... | testlint
+```
+
+testlint tells the two formats apart per line, so it never needs to be told
+which one it's reading.
+
 Example output:
 
 ```
