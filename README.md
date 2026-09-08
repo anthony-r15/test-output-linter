@@ -50,6 +50,17 @@ so it can gate a CI step:
 go test -v ./... | testlint || exit 1
 ```
 
+## Flags
+
+```sh
+testlint -slow-threshold=2s -rules=test-failed,panic run.log
+```
+
+- `-slow-threshold` sets how long a test must run to be flagged by
+  `slow-test`. Default `1s`.
+- `-rules` picks which rules run, as a comma-separated list of rule names.
+  Default is all of them: `test-failed,panic,data-race,slow-test`.
+
 ## Why streaming matters here
 
 Test logs from a real CI job can be large enough that reading the whole
