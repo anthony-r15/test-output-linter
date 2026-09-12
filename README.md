@@ -59,7 +59,7 @@ testlint -slow-threshold=2s -rules=test-failed,panic run.log
 - `-slow-threshold` sets how long a test must run to be flagged by
   `slow-test`. Default `1s`.
 - `-rules` picks which rules run, as a comma-separated list of rule names.
-  Default is all of them: `test-failed,panic,data-race,slow-test`.
+  Default is all of them: `test-failed,panic,data-race,slow-test,skip-count,flaky-rerun`.
 
 ## Why streaming matters here
 
@@ -78,6 +78,8 @@ hundred million.
 | `panic` | error | a `panic:` line |
 | `data-race` | error | `WARNING: DATA RACE` (from `go test -race`) |
 | `slow-test` | warning | a `--- PASS:`/`--- FAIL:` line whose duration is >= 1s |
+| `skip-count` | info | a `--- SKIP:` line, numbered by how many have been seen |
+| `flaky-rerun` | warning | the same test name reporting PASS/FAIL/SKIP more than once |
 
 ## Building
 

@@ -62,6 +62,82 @@ func (DataRaceRule) Check(line string, lineNo int) *Finding {
 	}
 }
 
+// testResultPrefixes maps the "--- STATUS:" prefix go test prints for a
+// finished test to the status name, in the order Check should try them.
+var testResultPrefixes = [...]string{"PASS", "FAIL", "SKIP"}
+
+// parseTestResult extracts the test name and status from a "--- PASS:",
+// "--- FAIL:", or "--- SKIP:" line. trimmed must already have leading and
+// trailing whitespace removed.
+func parseTestResult(trimmed string) (name, status string, ok bool) {
+	for _, status := range testResultPrefixes {
+		prefix := "--- " + status + ":"
+		if !strings.HasPrefix(trimmed, prefix) {
+			continue
+		}
+		rest := strings.TrimSpace(strings.TrimPrefix(trimmed, prefix))
+		if idx := strings.Index(rest, "("); idx != -1 {
+			rest = strings.TrimSpace(rest[:idx])
+		}
+		return rest, status, true
+	}
+	return "", "", false
+}
+
+// SkipRule flags every "--- SKIP:" line and tracks how many have been seen
+// so far, so a run with a growing number of skipped tests stands out even
+// though no single skip is an error on its own.
+type SkipRule struct {
+	count int
+}
+
+func (*SkipRule) Name() string { return "skip-count" }
+
+func (r *SkipRule) Check(line string, lineNo int) *Finding {
+	name, status, ok := parseTestResult(strings.TrimSpace(line))
+	if !ok || status != "SKIP" {
+		return nil
+	}
+	r.count++
+	return &Finding{
+		Line:     lineNo,
+		Rule:     "skip-count",
+		Severity: SeverityInfo,
+		Message:  fmt.Sprintf("test skipped: %s (skip #%d)", name, r.count),
+	}
+}
+
+// DuplicateTestNameRule flags a test name that reports a PASS, FAIL, or
+// SKIP result more than once in the same log. A well-behaved single `go
+// test` invocation reports each test exactly once, so a repeat usually
+// means the test (or the whole run) was retried after failing - a sign of
+// a flaky test rather than a stable one, even if the retry passed.
+type DuplicateTestNameRule struct {
+	seen map[string]int
+}
+
+func (*DuplicateTestNameRule) Name() string { return "flaky-rerun" }
+
+func (r *DuplicateTestNameRule) Check(line string, lineNo int) *Finding {
+	name, status, ok := parseTestResult(strings.TrimSpace(line))
+	if !ok || name == "" {
+		return nil
+	}
+	if r.seen == nil {
+		r.seen = make(map[string]int)
+	}
+	r.seen[name]++
+	if r.seen[name] < 2 {
+		return nil
+	}
+	return &Finding{
+		Line:     lineNo,
+		Rule:     "flaky-rerun",
+		Severity: SeverityWarning,
+		Message:  fmt.Sprintf("%s reported a result more than once (%s again here), possible flaky rerun", name, status),
+	}
+}
+
 // SlowTestRule flags tests whose reported duration is at or above
 // Threshold. Both "--- PASS:" and "--- FAIL:" lines carry a duration, so a
 // slow test is flagged regardless of outcome.

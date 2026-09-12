@@ -20,12 +20,14 @@ func allRules(slowThreshold time.Duration) map[string]Rule {
 		"panic":       PanicRule{},
 		"data-race":   DataRaceRule{},
 		"slow-test":   SlowTestRule{Threshold: slowThreshold},
+		"skip-count":  &SkipRule{},
+		"flaky-rerun": &DuplicateTestNameRule{},
 	}
 }
 
 func main() {
 	slowThreshold := flag.Duration("slow-threshold", time.Second, "minimum test duration to flag as slow")
-	ruleNames := flag.String("rules", "test-failed,panic,data-race,slow-test", "comma-separated list of rules to run")
+	ruleNames := flag.String("rules", "test-failed,panic,data-race,slow-test,skip-count,flaky-rerun", "comma-separated list of rules to run")
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, "usage: testlint [flags] [file]")
 		fmt.Fprintln(os.Stderr, "reads from stdin if no file is given")
