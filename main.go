@@ -28,12 +28,19 @@ func allRules(slowThreshold time.Duration) map[string]Rule {
 func main() {
 	slowThreshold := flag.Duration("slow-threshold", time.Second, "minimum test duration to flag as slow")
 	ruleNames := flag.String("rules", "test-failed,panic,data-race,slow-test,skip-count,flaky-rerun", "comma-separated list of rules to run")
+	formatName := flag.String("format", "text", "output format: text or json")
 	flag.Usage = func() {
 		fmt.Fprintln(os.Stderr, "usage: testlint [flags] [file]")
 		fmt.Fprintln(os.Stderr, "reads from stdin if no file is given")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+
+	formatter, ok := formatters[*formatName]
+	if !ok {
+		fmt.Fprintf(os.Stderr, "testlint: unknown format %q\n", *formatName)
+		os.Exit(2)
+	}
 
 	var in io.Reader = os.Stdin
 	if flag.NArg() > 0 {
@@ -62,15 +69,22 @@ func main() {
 	}
 
 	sawError := false
+	var writeErr error
 	emit := func(f Finding) {
 		if f.Severity == SeverityError {
 			sawError = true
 		}
-		fmt.Printf("%d: [%s] %s: %s\n", f.Line, f.Severity, f.Rule, f.Message)
+		if writeErr == nil {
+			writeErr = formatter.Write(os.Stdout, f)
+		}
 	}
 
 	if err := Lint(in, rules, emit); err != nil {
 		fmt.Fprintln(os.Stderr, "testlint:", err)
+		os.Exit(2)
+	}
+	if writeErr != nil {
+		fmt.Fprintln(os.Stderr, "testlint:", writeErr)
 		os.Exit(2)
 	}
 
