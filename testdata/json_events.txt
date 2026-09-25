@@ -1,0 +1,12 @@
+{"Time":"2026-01-01T00:00:00Z","Action":"run","Package":"example","Test":"TestAdd"}
+{"Time":"2026-01-01T00:00:00Z","Action":"output","Package":"example","Test":"TestAdd","Output":"=== RUN   TestAdd\n"}
+{"Time":"2026-01-01T00:00:00Z","Action":"output","Package":"example","Test":"TestAdd","Output":"--- PASS: TestAdd (0.00s)\n"}
+{"Time":"2026-01-01T00:00:00Z","Action":"pass","Package":"example","Test":"TestAdd"}
+{"Time":"2026-01-01T00:00:00Z","Action":"run","Package":"example","Test":"TestParseConfig"}
+{"Time":"2026-01-01T00:00:00Z","Action":"output","Package":"example","Test":"TestParseConfig","Output":"=== RUN   TestParseConfig\n"}
+{"Time":"2026-01-01T00:00:00Z","Action":"output","Package":"example","Test":"TestParseConfig","Output":"--- FAIL: TestParseConfig (0.01s)\n"}
+{"Time":"2026-01-01T00:00:00Z","Action":"output","Package":"example","Test":"TestParseConfig","Output":"    config_test.go:22: expected port 8080, got 0\n"}
+{"Time":"2026-01-01T00:00:00Z","Action":"fail","Package":"example","Test":"TestParseConfig"}
+{"Time":"2026-01-01T00:00:00Z","Action":"output","Package":"example","Output":"FAIL\n"}
+{"Time":"2026-01-01T00:00:00Z","Action":"output","Package":"example","Output":"FAIL\texample\t0.021s\n"}
+{"Time":"2026-01-01T00:00:00Z","Action":"fail","Package":"example"}

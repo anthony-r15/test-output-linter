@@ -1,0 +1,18 @@
+=== RUN   TestAdd
+--- PASS: TestAdd (0.00s)
+=== RUN   TestParseConfig
+--- FAIL: TestParseConfig (0.01s)
+    config_test.go:22: expected port 8080, got 0
+=== RUN   TestFullSync
+--- PASS: TestFullSync (4.20s)
+=== RUN   TestShortModeOnly
+--- SKIP: TestShortModeOnly (0.00s)
+    sync_test.go:9: skipping in short mode
+=== RUN   TestFlakyRetry
+--- FAIL: TestFlakyRetry (0.02s)
+    retry_test.go:14: connection refused
+=== RUN   TestFlakyRetry
+--- PASS: TestFlakyRetry (0.03s)
+FAIL
+exit status 1
+FAIL    github.com/anthony-r15/test-output-linter/example    4.312s

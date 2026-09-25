@@ -1,0 +1,16 @@
+=== RUN   TestConcurrentWrite
+==================
+WARNING: DATA RACE
+Write at 0x00c0000a4010 by goroutine 8:
+  github.com/anthony-r15/test-output-linter/example.increment()
+      /home/example/counter.go:12 +0x44
+
+Previous write at 0x00c0000a4010 by goroutine 7:
+  github.com/anthony-r15/test-output-linter/example.increment()
+      /home/example/counter.go:12 +0x44
+==================
+--- FAIL: TestConcurrentWrite (0.00s)
+    testing.go:1092: race detected during execution of test
+FAIL
+exit status 1
+FAIL    github.com/anthony-r15/test-output-linter/example    0.021s
