@@ -52,6 +52,12 @@ type Rule interface {
 	Check(line string, lineNo int) *Finding
 }
 
+// Finisher is implemented by rules that describe a span of several lines and
+// so may still be holding a finding when the input ends.
+type Finisher interface {
+	Finish() *Finding
+}
+
 // Emitter receives findings as they are discovered.
 type Emitter func(Finding)
 
@@ -107,6 +113,13 @@ func Lint(r io.Reader, rules []Rule, emit Emitter) error {
 		}
 		for _, rule := range rules {
 			if f := rule.Check(line, lineNo); f != nil {
+				emit(*f)
+			}
+		}
+	}
+	for _, rule := range rules {
+		if fin, ok := rule.(Finisher); ok {
+			if f := fin.Finish(); f != nil {
 				emit(*f)
 			}
 		}

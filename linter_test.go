@@ -15,7 +15,7 @@ import (
 func lintRules() []Rule {
 	return []Rule{
 		FailRule{},
-		PanicRule{},
+		&PanicRule{},
 		DataRaceRule{},
 		SlowTestRule{Threshold: time.Second},
 		&SkipRule{},
@@ -56,13 +56,41 @@ func TestLintVerboseMixedTranscript(t *testing.T) {
 	}
 }
 
-// TestLintPanicTranscript checks that a panic is flagged on the line
-// bearing the "panic:" summary, not on the goroutine dump or frame lines
-// that follow it.
+// TestLintPanicTranscript checks that a panic and its whole goroutine dump
+// come out as one finding, placed on the line bearing the "panic:" summary.
 func TestLintPanicTranscript(t *testing.T) {
 	got := lintFile(t, "testdata/panic.txt")
 	want := []Finding{
-		{Line: 2, Rule: "panic", Severity: SeverityError, Message: "panic: runtime error: index out of range [3] with length 3"},
+		{Line: 2, Rule: "panic", Severity: SeverityError, Message: "panic: runtime error: index out of range [3] with length 3 (7 stack lines)"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("findings mismatch:\n got:  %+v\n want: %+v", got, want)
+	}
+}
+
+// TestLintNestedPanicTranscript covers a recovered panic that is raised
+// again: still one finding, with the repeat counted and the first frame
+// outside the standard library named.
+func TestLintNestedPanicTranscript(t *testing.T) {
+	got := lintFile(t, "testdata/panic_nested.txt")
+	want := []Finding{
+		{Line: 2, Rule: "panic", Severity: SeverityError, Message: "panic: config missing [recovered] (10 stack lines, 1 nested panic, at /home/ci/app/loader.go:57)"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("findings mismatch:\n got:  %+v\n want: %+v", got, want)
+	}
+}
+
+// TestLintPanicAtEndOfInput checks that a trace cut off by the end of the
+// log, with no "exit status" line after it, is still reported.
+func TestLintPanicAtEndOfInput(t *testing.T) {
+	in := "=== RUN   TestX\npanic: boom\n\ngoroutine 5 [running]:\n"
+	var got []Finding
+	if err := Lint(strings.NewReader(in), lintRules(), func(f Finding) { got = append(got, f) }); err != nil {
+		t.Fatal(err)
+	}
+	want := []Finding{
+		{Line: 2, Rule: "panic", Severity: SeverityError, Message: "panic: boom (1 stack lines)"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("findings mismatch:\n got:  %+v\n want: %+v", got, want)

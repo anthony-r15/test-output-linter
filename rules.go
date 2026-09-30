@@ -25,24 +25,116 @@ func (FailRule) Check(line string, lineNo int) *Finding {
 	}
 }
 
+// traceEndPrefixes are the lines go test prints right after a panic's
+// goroutine dump. The dump itself has no terminator (frames, blank lines and
+// "[signal ...]" notes all look alike), so the first of these ends it.
+var traceEndPrefixes = [...]string{"exit status", "FAIL", "PASS", "ok ", "--- ", "=== ", "WARNING: DATA RACE"}
+
+// goroot source directories whose frames are never the interesting one in a
+// test panic; the first frame outside them is usually the code at fault.
+var runtimeFrameDirs = [...]string{"/src/runtime/", "/src/testing/"}
+
 // PanicRule flags panics surfaced in test output. go test does not mark
 // these with a "--- FAIL:" line of their own, so without this rule a
 // panicking test can scroll past unnoticed in a long log.
-type PanicRule struct{}
+//
+// A panic is reported once, as a single finding on the line of the first
+// "panic:" header, no matter how many lines of goroutine dump follow or how
+// many times it was recovered and re-raised. Because the finding describes
+// the whole trace it can only be produced once the trace ends, so it is
+// returned by the line that ends it, or by Finish at end of input.
+type PanicRule struct {
+	active     bool
+	line       int
+	header     string
+	stackLines int
+	nested     int
+	userFrame  string
+}
 
-func (PanicRule) Name() string { return "panic" }
+func (*PanicRule) Name() string { return "panic" }
 
-func (PanicRule) Check(line string, lineNo int) *Finding {
+func (r *PanicRule) Check(line string, lineNo int) *Finding {
 	trimmed := strings.TrimSpace(line)
-	if !strings.HasPrefix(trimmed, "panic:") {
+
+	if r.active {
+		if !endsPanicTrace(line) {
+			r.absorb(line, trimmed)
+			return nil
+		}
+		f := r.Finish()
+		r.start(trimmed, lineNo)
+		return f
+	}
+	r.start(trimmed, lineNo)
+	return nil
+}
+
+// Finish reports a panic whose trace was still open when the input ended.
+func (r *PanicRule) Finish() *Finding {
+	if !r.active {
 		return nil
 	}
-	return &Finding{
-		Line:     lineNo,
-		Rule:     "panic",
-		Severity: SeverityError,
-		Message:  trimmed,
+	parts := make([]string, 0, 3)
+	if r.stackLines > 0 {
+		parts = append(parts, fmt.Sprintf("%d stack lines", r.stackLines))
 	}
+	if r.nested > 0 {
+		parts = append(parts, fmt.Sprintf("%d nested panic", r.nested))
+	}
+	if r.userFrame != "" {
+		parts = append(parts, "at "+r.userFrame)
+	}
+	msg := r.header
+	if len(parts) > 0 {
+		msg += " (" + strings.Join(parts, ", ") + ")"
+	}
+	f := &Finding{Line: r.line, Rule: "panic", Severity: SeverityError, Message: msg}
+	*r = PanicRule{}
+	return f
+}
+
+func (r *PanicRule) start(trimmed string, lineNo int) {
+	if !strings.HasPrefix(trimmed, "panic:") {
+		return
+	}
+	*r = PanicRule{active: true, line: lineNo, header: trimmed}
+}
+
+// absorb folds one line of an open trace into the pending finding.
+func (r *PanicRule) absorb(line, trimmed string) {
+	switch {
+	case trimmed == "":
+		return
+	case strings.HasPrefix(trimmed, "panic:"):
+		// A recovered panic that was raised again prints a second header.
+		r.nested++
+		return
+	}
+	r.stackLines++
+	if r.userFrame != "" || line[0] != '\t' {
+		return
+	}
+	// Frame location lines look like "\t/path/file.go:57 +0x9a".
+	loc := strings.Fields(trimmed)[0]
+	if !strings.Contains(loc, ".go:") {
+		return
+	}
+	for _, dir := range runtimeFrameDirs {
+		if strings.Contains(loc, dir) {
+			return
+		}
+	}
+	r.userFrame = loc
+}
+
+func endsPanicTrace(line string) bool {
+	for _, p := range traceEndPrefixes {
+		if strings.HasPrefix(line, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // DataRaceRule flags races reported by the race detector (go test -race).

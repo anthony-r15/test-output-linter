@@ -39,7 +39,7 @@ Example output:
 
 ```
 142: [error] test-failed: test failed: TestParseConfig
-143: [error] panic: panic: runtime error: index out of range [3] with length 3
+143: [error] panic: panic: runtime error: index out of range [3] with length 3 (7 stack lines, at /home/ci/app/loader.go:57)
 980: [warning] slow-test: TestFullSync took 4.2s, over threshold 1s
 ```
 
@@ -75,7 +75,7 @@ hundred million.
 | rule | severity | triggers on |
 |---|---|---|
 | `test-failed` | error | a `--- FAIL:` line |
-| `panic` | error | a `panic:` line |
+| `panic` | error | a `panic:` line; the whole stack trace is one finding on that line |
 | `data-race` | error | `WARNING: DATA RACE` (from `go test -race`) |
 | `slow-test` | warning | a `--- PASS:`/`--- FAIL:` line whose duration is >= 1s |
 | `skip-count` | info | a `--- SKIP:` line, numbered by how many have been seen |

@@ -17,7 +17,7 @@ import (
 func allRules(slowThreshold time.Duration) map[string]Rule {
 	return map[string]Rule{
 		"test-failed": FailRule{},
-		"panic":       PanicRule{},
+		"panic":       &PanicRule{},
 		"data-race":   DataRaceRule{},
 		"slow-test":   SlowTestRule{Threshold: slowThreshold},
 		"skip-count":  &SkipRule{},
